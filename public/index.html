@@ -1,82 +1,40 @@
-<html>
-
+<!DOCTYPE html>
+<html lang="it">
 <head>
-    <style type="TEXT/CSS">
-        .oggetto {
-            position: absolute;
-            background-color: rgb(200, 0, 0);
-            color: white;
-            height: 90px;
-            width: 90px;
-            text-align: center;
-            font-size: 15px;
-        }
-
-        .mosse {
-            position: absolute;
-            background-color: rgb(0, 0, 150);
-            color: white;
-            height: 50px;
-            width: 50px;
-            text-align: center;
-            font-size: 12px;
-        }
-
-        .mosseg {
-            position: absolute;
-            background-color: rgb(255, 255, 0);
-            color: black;
-            height: 50px;
-            width: 50px;
-            text-align: center;
-            font-size: 12px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incontro di Calcio in Tempo Reale</title>
 </head>
-
 <body>
-    <button id="aggiungiSquadra">Aggiungi Squadra</button>
-    <button id="aggiungiGiocatore">Aggiungi Giocatore</button>
+  <h1>Incontro di Calcio</h1>
+  <div>
+    <label>Punteggio Squadra Casa: <span id="punteggioCasa">0</span></label>
+  </div>
+  <div>
+    <label>Punteggio Squadra Ospite: <span id="punteggioOspite">0</span></label>
+  </div>
+  <button onclick="aggiornaPunteggio(1, 2)">Aggiorna Punteggio</button>
 
-    <script>
-        let webSocket = new WebSocket("ws://localhost:8080");
+  <script>
+    const ws = new WebSocket('ws://localhost:3000');
 
-        webSocket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            console.log(data);
-        };
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'scoreUpdate') {
+        document.getElementById('punteggioCasa').textContent = message.punteggioCasa;
+        document.getElementById('punteggioOspite').textContent = message.punteggioOspite;
+      }
+    };
 
-        document.getElementById("aggiungiSquadra").addEventListener("click", () => {
-            const nomeSquadra = prompt("Inserisci il nome della squadra:");
-            if (nomeSquadra) {
-                const message = JSON.stringify({
-                    type: "inserisci_squadra",
-                    nome: nomeSquadra
-                });
-                webSocket.send(message);
-            }
-        });
-
-        document.getElementById("aggiungiGiocatore").addEventListener("click", () => {
-            const squadra_id = prompt("Inserisci l'ID della squadra:");
-            const nomeGiocatore = prompt("Inserisci il nome del giocatore:");
-            const cognomeGiocatore = prompt("Inserisci il cognome del giocatore:");
-            const dataNascitaGiocatore = prompt("Inserisci la data di nascita del giocatore (YYYY-MM-DD):");
-            const nazionalitaGiocatore = prompt("Inserisci la nazionalità del giocatore:");
-            
-            if (squadra_id && nomeGiocatore && cognomeGiocatore && dataNascitaGiocatore && nazionalitaGiocatore) {
-                const message = JSON.stringify({
-                    type: "inserisci_giocatore",
-                    squadra_id: parseInt(squadra_id),
-                    nome: nomeGiocatore,
-                    cognome: cognomeGiocatore,
-                    data_nascita: dataNascitaGiocatore,
-                    nazionalita: nazionalitaGiocatore
-                });
-                webSocket.send(message);
-            }
-        });
-    </script>
+    function aggiornaPunteggio(punteggioCasa, punteggioOspite) {
+      const message = JSON.stringify({
+        type: 'updateScore',
+        partitaId: 1, // Esempio partitaId, dovrebbe essere dinamico in un'applicazione reale
+        punteggioCasa: punteggioCasa,
+        punteggioOspite: punteggioOspite
+      });
+      ws.send(message);
+    }
+  </script>
 </body>
-
 </html>

@@ -1,10 +1,14 @@
 {
+  "name": "calcio-tempo-reale",
+  "version": "1.0.0",
+  "description": "Gestione incontro di calcio in tempo reale",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
-    "body-parser": "^1.20.2",
-    "ejs": "^3.1.10",
-    "express": "^4.19.2",
+    "express": "^4.17.1",
     "mysql": "^2.18.1",
-    "path": "^0.12.7",
-    "ws": "^8.16.0"
+    "ws": "^7.5.5"
   }
 }

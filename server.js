@@ -1,54 +1,58 @@
 const express = require('express');
-const { Server } = require('ws');
-const mysql = require('mysql');
+const http = require('http');
+const WebSocket = require('ws');
+const db = require('./db');
 
-const server = express()
-    .use(express.static('public')) // Serve la directory 'public' per gli asset statici (ad esempio, index.html)
-    .listen(3000, () => console.log('Listening on 3000'));
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
-const ws_server = new Server({ server });
+app.use(express.static('public'));
 
-const dbConnection = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "", // Inserisci la tua password se necessario
-    database: "calcio" // Assicurati di usare il nome del database corretto
+wss.on('connection', ws => {
+  console.log('Cliente connesso');
+
+  ws.on('message', message => {
+    console.log('Ricevuto:', message);
+
+    const parsedMessage = JSON.parse(message);
+
+    if (parsedMessage.type === 'updateScore') {
+      const { partitaId, punteggioCasa, punteggioOspite } = parsedMessage;
+
+      db.query(
+        'UPDATE partita SET punteggio_casa = ?, punteggio_ospite = ? WHERE id = ?',
+        [punteggioCasa, punteggioOspite, partitaId],
+        (err) => {
+          if (err) {
+            console.error('Errore nell\'aggiornamento del punteggio:', err);
+            return;
+          }
+          broadcast(JSON.stringify({
+            type: 'scoreUpdate',
+            partitaId,
+            punteggioCasa,
+            punteggioOspite
+          }));
+        }
+      );
+    }
+  });
+
+  ws.on('close', () => {
+    console.log('Cliente disconnesso');
+  });
 });
 
-ws_server.on('connection', (ws) => {
-    console.log("Nuova connessione WebSocket.");
+function broadcast(data) {
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(data);
+    }
+  });
+}
 
-    ws.on('message', (message) => {
-        const data = JSON.parse(message);
-
-        if (data.type === 'inserisci_squadra') {
-            const nomeSquadra = data.nome;
-            const inserisciSquadraQuery = `INSERT INTO Squadre (nome) VALUES ('${nomeSquadra}')`;
-
-            dbConnection.query(inserisciSquadraQuery, (err, result) => {
-                if (err) {
-                    console.error("Errore durante l'inserimento della squadra:", err);
-                    return;
-                }
-                console.log("Squadra inserita con successo:", nomeSquadra);
-            });
-        }
-
-        if (data.type === 'inserisci_giocatore') {
-            const { squadra_id, nome, cognome, data_nascita, nazionalita } = data;
-            const inserisciGiocatoreQuery = `INSERT INTO Giocatori (squadra_id, nome, cognome, data_nascita, nazionalita) VALUES (${squadra_id}, '${nome}', '${cognome}', '${data_nascita}', '${nazionalita}')`;
-
-            dbConnection.query(inserisciGiocatoreQuery, (err, result) => {
-                if (err) {
-                    console.error("Errore durante l'inserimento del giocatore:", err);
-                    return;
-                }
-                console.log("Giocatore inserito con successo:", nome, cognome);
-            });
-        }
-    });
-
-    ws.on('close', () => {
-        console.log("Connessione WebSocket chiusa.");
-    });
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server in ascolto sulla porta ${PORT}`);
 });
