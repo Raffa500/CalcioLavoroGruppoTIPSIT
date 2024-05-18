@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inizia Partita</title>
+</head>
+<body>
+  <h1>Inizia Partita</h1>
+
+  <div id="selezioneSquadre"></div>
+  <button onclick="iniziaPartita()">Inizia Partita</button>
+
+  <div id="gestionePartita" style="display: none;">
+    <h2 id="squadraCasa"></h2>
+    <button onclick="terminaPartita('casa')">Vince Casa</button>
+    <h2 id="squadraOspite"></h2>
+    <button onclick="terminaPartita('ospite')">Vince Ospite</button>
+  </div>
+
+  <script>
+    let partitaId;
+    let squadraCasaId;
+    let squadraOspiteId;
+
+    fetch('/teams')
+    .then(response => response.json())
+    .then(data => {
+      const selezioneSquadre = document.getElementById('selezioneSquadre');
+      if (data.length < 2) {
+        selezioneSquadre.innerHTML = 'Aggiungi almeno 2 squadre';
+        return;
+      }
+      selezioneSquadre.innerHTML = `
+        <label for="squadraCasaSelect">Squadra Casa:</label>
+        <select id="squadraCasaSelect">${data.map(squadra => `<option value="${squadra.id}">${squadra.nome}</option>`).join('')}</select>
+        <br>
+        <label for="squadraOspiteSelect">Squadra Ospite:</label>
+        <select id="squadraOspiteSelect">${data.map(squadra => `<option value="${squadra.id}">${squadra.nome}</option>`).join('')}</select>
+      `;
+    })
+    .catch(error => console.error('Errore:', error));
+
+    function iniziaPartita() {
+      squadraCasaId = document.getElementById('squadraCasaSelect').value;
+      squadraOspiteId = document.getElementById('squadraOspiteSelect').value;
+
+      fetch('/start-match', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ squadraCasaId, squadraOspiteId })
+      })
+      .then(response => response.json())
+      .then(data => {
+        partitaId = data.partitaId;
+        document.getElementById('gestionePartita').style.display = 'block';
+        document.getElementById('squadraCasa').textContent = document.querySelector(`#squadraCasaSelect option[value="${squadraCasaId}"]`).textContent;
+        document.getElementById('squadraOspite').textContent = document.querySelector(`#squadraOspiteSelect option[value="${squadraOspiteId}"]`).textContent;
+      })
+      .catch(error => console.error('Errore:', error));
+    }
+
+    function terminaPartita(vincitore) {
+      fetch('/end-match', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ partitaId, vincitore })
+      })
+      .then(response => response.text())
+      .then(data => {
+        alert(data);
+        window.location.href = 'index.html';
+      })
+      .catch(error => console.error('Errore:', error));
+    }
+  </script>
+</body>
+</html>

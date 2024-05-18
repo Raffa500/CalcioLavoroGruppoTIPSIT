@@ -3,37 +3,98 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Incontro di Calcio in Tempo Reale</title>
+  <title>Gestione Calcio in Tempo Reale</title>
 </head>
 <body>
-  <h1>Incontro di Calcio</h1>
-  <div>
-    <label>Punteggio Squadra Casa: <span id="punteggioCasa">0</span></label>
+  <h1>Gestione Calcio</h1>
+  
+  <button id="aggiungiSquadraBtn">Aggiungi Squadra</button>
+  <button id="visualizzaSquadreBtn">Visualizza Squadre</button>
+  <button id="partitaBtn">Partita</button>
+  <button id="visualizzaRisultatiBtn">Visualizza Risultati</button>
+  <button id="resetBtn">Resetta Tutto</button>
+  
+  <div id="formAggiungiSquadra" style="display: none;">
+    <input type="text" id="nomeSquadra" placeholder="Nome Squadra">
+    <button onclick="aggiungiSquadra()">Aggiungi</button>
   </div>
-  <div>
-    <label>Punteggio Squadra Ospite: <span id="punteggioOspite">0</span></label>
-  </div>
-  <button onclick="aggiornaPunteggio(1, 2)">Aggiorna Punteggio</button>
+  
+  <div id="listaSquadre" style="display: none;"></div>
+  <div id="risultati" style="display: none;"></div>
 
   <script>
-    const ws = new WebSocket('ws://localhost:3000');
+    document.getElementById('aggiungiSquadraBtn').addEventListener('click', () => {
+      document.getElementById('formAggiungiSquadra').style.display = 'block';
+    });
 
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'scoreUpdate') {
-        document.getElementById('punteggioCasa').textContent = message.punteggioCasa;
-        document.getElementById('punteggioOspite').textContent = message.punteggioOspite;
-      }
-    };
+    document.getElementById('visualizzaSquadreBtn').addEventListener('click', visualizzaSquadre);
+    document.getElementById('partitaBtn').addEventListener('click', () => {
+      window.location.href = 'partita.html';
+    });
+    document.getElementById('visualizzaRisultatiBtn').addEventListener('click', visualizzaRisultati);
+    document.getElementById('resetBtn').addEventListener('click', resetDatabase);
 
-    function aggiornaPunteggio(punteggioCasa, punteggioOspite) {
-      const message = JSON.stringify({
-        type: 'updateScore',
-        partitaId: 1, // Esempio partitaId, dovrebbe essere dinamico in un'applicazione reale
-        punteggioCasa: punteggioCasa,
-        punteggioOspite: punteggioOspite
-      });
-      ws.send(message);
+    function aggiungiSquadra() {
+      const nome = document.getElementById('nomeSquadra').value;
+      fetch('/add-team', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ nome })
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.text().then(text => { throw new Error(text) });
+        }
+        return response.text();
+      })
+      .then(data => {
+        alert(data);
+        document.getElementById('formAggiungiSquadra').style.display = 'none';
+        document.getElementById('nomeSquadra').value = '';
+      })
+      .catch(error => alert('Errore del server: ' + error.message));
+    }
+
+    function visualizzaSquadre() {
+      fetch('/teams')
+      .then(response => response.json())
+      .then(data => {
+        const listaSquadre = document.getElementById('listaSquadre');
+        listaSquadre.style.display = 'block';
+        if (data.length === 0) {
+          listaSquadre.innerHTML = 'Nessuna squadra aggiunta';
+        } else {
+          listaSquadre.innerHTML = '<ul>' + data.map(squadra => `<li>${squadra.nome}</li>`).join('') + '</ul>';
+        }
+      })
+      .catch(error => console.error('Errore:', error));
+    }
+
+    function visualizzaRisultati() {
+      fetch('/results')
+      .then(response => response.json())
+      .then(data => {
+        const risultati = document.getElementById('risultati');
+        risultati.style.display = 'block';
+        if (data.length === 0) {
+          risultati.innerHTML = 'Nessuna squadra aggiunta';
+        } else {
+          risultati.innerHTML = '<table border="1"><tr><th>Nome</th><th>Partite Giocate</th><th>Vinte Casa</th><th>Vinte Ospite</th></tr>' +
+            data.map(squadra => `<tr><td>${squadra.nome}</td><td>${squadra.partite_giocate}</td><td>${squadra.vinte_casa}</td><td>${squadra.vinte_ospite}</td></tr>`).join('') + '</table>';
+        }
+      })
+      .catch(error => console.error('Errore:', error));
+    }
+
+    function resetDatabase() {
+      fetch('/reset', { method: 'POST' })
+      .then(response => response.text())
+      .then(data => {
+        alert(data);
+      })
+      .catch(error => console.error('Errore:', error));
     }
   </script>
 </body>
