@@ -11,48 +11,42 @@ const wss = new WebSocket.Server({ server });
 app.use(express.static('public'));
 app.use(bodyParser.json());
 
+let clientIds = {}; // Oggetto per memorizzare gli identificatori unici dei client
+let nextClientId = 1; // Prossimo identificatore unico disponibile
+
 wss.on('connection', ws => {
-  console.log('Cliente connesso');
+  const clientId = nextClientId++; // Assegniamo un identificatore unico basato sul prossimo valore disponibile
+  console.log(`Client ${clientId} connesso`);
+
+  // Memorizziamo l'identificatore del client nella mappa dei client
+  clientIds[ws] = clientId;
 
   ws.on('message', message => {
-    console.log('Ricevuto:', message);
+    console.log(`Ricevuto dal client ${clientId}:`, message);
 
     const parsedMessage = JSON.parse(message);
 
-    if (parsedMessage.type === 'updateScore') {
-      const { partitaId, punteggioCasa, punteggioOspite } = parsedMessage;
-
-      db.query(
-        'UPDATE partita SET punteggio_casa = ?, punteggio_ospite = ? WHERE id = ?',
-        [punteggioCasa, punteggioOspite, partitaId],
-        (err) => {
-          if (err) {
-            console.error('Errore nell\'aggiornamento del punteggio:', err);
-            return;
-          }
-          broadcast(JSON.stringify({
-            type: 'scoreUpdate',
-            partitaId,
-            punteggioCasa,
-            punteggioOspite
-          }));
-        }
-      );
+    if (ws === clientIds['client1']) {
+      // Logica per il client1
+      console.log('Messaggio ricevuto da client1:', message);
+      // Esempio di risposta al client1
+      // ws.send('Messaggio ricevuto dal client1');
+    } else if (ws === clientIds['client2']) {
+      // Logica per il client2
+      console.log('Messaggio ricevuto da client2:', message);
+      // Esempio di risposta al client2
+      // ws.send('Messaggio ricevuto dal client2');
     }
   });
 
   ws.on('close', () => {
-    console.log('Cliente disconnesso');
+    console.log(`Client ${clientId} disconnesso`);
+    // Rimuoviamo l'identificatore del client dalla mappa dei client quando si disconnette
+    delete clientIds[ws];
   });
 });
 
-function broadcast(data) {
-  wss.clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(data);
-    }
-  });
-}
+
 
 // Endpoint per aggiungere una squadra
 app.post('/add-team', (req, res) => {
@@ -145,7 +139,6 @@ app.post('/end-match', (req, res) => {
   );
 });
 
-
 // Funzione per aggiornare la tabella dei risultati
 function updateResultsTable() {
   db.query('SELECT * FROM squadra', (err, results) => {
@@ -153,7 +146,7 @@ function updateResultsTable() {
       console.error('Errore nel recuperare i risultati:', err);
       return;
     }
-        // Invia i risultati aggiornati ai client connessi
+    // Invia i risultati aggiornati ai client connessi
     broadcast(JSON.stringify({
       type: 'resultsUpdate',
       results: results
@@ -190,6 +183,15 @@ app.post('/reset', (req, res) => {
     });
   });
 });
+
+// Funzione per inviare messaggi a tutti i client connessi
+function broadcast(data) {
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(data);
+    }
+  });
+}
 
 
 const PORT = process.env.PORT || 3000;
