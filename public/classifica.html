@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classifica</title>
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid black;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <h1>Classifica Squadre</h1>
+  <button onclick="resetDatabase()">Reset Database</button>
+  <div id="classifica"></div>
+
+  <script>
+    const ws = new WebSocket('ws://' + window.location.host);
+    ws.onmessage = (message) => {
+      const data = JSON.parse(message.data);
+      if (data.type === 'resultsUpdate') {
+        aggiornaClassifica(data.results);
+      }
+    };
+
+    function aggiornaClassifica(squadre) {
+      const classificaDiv = document.getElementById('classifica');
+      classificaDiv.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Nome Squadra</th>
+              <th>Partite Giocate</th>
+              <th>Vinte in Casa</th>
+              <th>Vinte in Trasferta</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${squadre.map(squadra => `
+              <tr>
+                <td>${squadra.nome}</td>
+                <td>${squadra.partite_giocate}</td>
+                <td>${squadra.vinte_casa}</td>
+                <td>${squadra.vinte_ospite}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function fetchResults() {
+      fetch('/results')
+      .then(response => response.json())
+      .then(data => aggiornaClassifica(data));
+    }
+
+    function resetDatabase() {
+      fetch('/reset', { method: 'POST' })
+      .then(response => response.text())
+      .then(data => {
+        alert(data);
+        fetchResults();
+      });
+    }
+
+    fetchResults();
+  </script>
+</body>
+</html>

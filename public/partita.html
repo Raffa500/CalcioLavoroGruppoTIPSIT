@@ -3,80 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inizia Partita</title>
+  <title>Partita</title>
 </head>
 <body>
-  <h1>Inizia Partita</h1>
-
-  <div id="selezioneSquadre"></div>
-  <button onclick="iniziaPartita()">Inizia Partita</button>
-
-  <div id="gestionePartita" style="display: none;">
-    <h2 id="squadraCasa"></h2>
-    <button onclick="terminaPartita('casa')">Vince Casa</button>
-    <h2 id="squadraOspite"></h2>
-    <button onclick="terminaPartita('ospite')">Vince Ospite</button>
+  <h1>Seleziona Squadre per la Partita</h1>
+  <div>
+    <label for="squadraCasa">Squadra di Casa:</label>
+    <select id="squadraCasa"></select>
   </div>
+  <div>
+    <label for="squadraOspite">Squadra Ospite:</label>
+    <select id="squadraOspite"></select>
+  </div>
+  <button id="iniziaPartitaBtn">Inizia Partita</button>
 
   <script>
-    let partitaId;
-    let squadraCasaId;
-    let squadraOspiteId;
+    document.addEventListener('DOMContentLoaded', () => {
+      fetch('/teams')
+        .then(response => response.json())
+        .then(teams => {
+          const squadraCasaSelect = document.getElementById('squadraCasa');
+          const squadraOspiteSelect = document.getElementById('squadraOspite');
 
-    fetch('/teams')
-    .then(response => response.json())
-    .then(data => {
-      const selezioneSquadre = document.getElementById('selezioneSquadre');
-      if (data.length < 2) {
-        selezioneSquadre.innerHTML = 'Aggiungi almeno 2 squadre';
-        return;
-      }
-      selezioneSquadre.innerHTML = `
-        <label for="squadraCasaSelect">Squadra Casa:</label>
-        <select id="squadraCasaSelect">${data.map(squadra => `<option value="${squadra.id}">${squadra.nome}</option>`).join('')}</select>
-        <br>
-        <label for="squadraOspiteSelect">Squadra Ospite:</label>
-        <select id="squadraOspiteSelect">${data.map(squadra => `<option value="${squadra.id}">${squadra.nome}</option>`).join('')}</select>
-      `;
-    })
-    .catch(error => console.error('Errore:', error));
+          teams.forEach(team => {
+            const option = document.createElement('option');
+            option.value = team.id;
+            option.textContent = team.nome;
+            squadraCasaSelect.appendChild(option);
 
-    function iniziaPartita() {
-      squadraCasaId = document.getElementById('squadraCasaSelect').value;
-      squadraOspiteId = document.getElementById('squadraOspiteSelect').value;
+            const optionClone = option.cloneNode(true);
+            squadraOspiteSelect.appendChild(optionClone);
+          });
+        });
 
-      fetch('/start-match', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ squadraCasaId, squadraOspiteId })
-      })
-      .then(response => response.json())
-      .then(data => {
-        partitaId = data.partitaId;
-        document.getElementById('gestionePartita').style.display = 'block';
-        document.getElementById('squadraCasa').textContent = document.querySelector(`#squadraCasaSelect option[value="${squadraCasaId}"]`).textContent;
-        document.getElementById('squadraOspite').textContent = document.querySelector(`#squadraOspiteSelect option[value="${squadraOspiteId}"]`).textContent;
-      })
-      .catch(error => console.error('Errore:', error));
-    }
+      document.getElementById('iniziaPartitaBtn').addEventListener('click', () => {
+        const squadraCasaId = document.getElementById('squadraCasa').value;
+        const squadraOspiteId = document.getElementById('squadraOspite').value;
 
-    function terminaPartita(vincitore) {
-      fetch('/end-match', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ partitaId, vincitore })
-      })
-      .then(response => response.text())
-      .then(data => {
-        alert(data);
-        window.location.href = 'index.html';
-      })
-      .catch(error => console.error('Errore:', error));
-    }
+        if (squadraCasaId === squadraOspiteId) {
+          alert('Le squadre di casa e ospite devono essere diverse');
+          return;
+        }
+
+        // Creazione dell'istanza del WebSocket
+        const ws = new WebSocket('ws://' + window.location.host);
+        ws.onopen = () => {
+          // Invio del messaggio solo quando la connessione è aperta
+          ws.send(JSON.stringify({
+            type: 'startMatch',
+            squadraCasaId,
+            squadraOspiteId
+          }));
+        };
+
+        ws.onerror = (error) => {
+          console.error('Errore nella connessione WebSocket:', error);
+        };
+
+        ws.onmessage = (event) => {
+          const message = JSON.parse(event.data);
+          if (message.type === 'loadPage') {
+            window.location.href = message.page;
+          }
+        };
+      });
+    });
   </script>
 </body>
 </html>

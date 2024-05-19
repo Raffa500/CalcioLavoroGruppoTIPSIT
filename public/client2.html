@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client 2</title>
+</head>
+<body>
+  <h1>Client 2 - Genera Punteggio Ospite</h1>
+  <button id="generaPunteggioBtn">Genera Punteggio</button>
+
+  <script>
+    document.getElementById('generaPunteggioBtn').addEventListener('click', () => {
+      const ws = new WebSocket('ws://' + window.location.host);
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: 'generateScore' }));
+      };
+
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === 'matchResult') {
+          document.body.innerHTML = `<h1>Risultato Partita</h1>
+            <p>Squadra di Casa: ${message.squadraCasaId} - Punteggio: ${message.punteggioCasa}</p>
+            <p>Squadra Ospite: ${message.squadraOspiteId} - Punteggio: ${message.punteggioOspite}</p>`;
+        }
+      };
+    });
+  </script>
+</body>
+</html>
