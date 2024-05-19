@@ -152,22 +152,22 @@ app.get('/results', (req, res) => {
 
 // Endpoint per resettare tutto
 app.post('/reset', (req, res) => {
-  db.query('DELETE FROM squadra', (err) => {
+  db.query('DELETE FROM partita', (err) => {
     if (err) {
-      console.error('Errore nel resettare le squadre:', err);
+      console.error('Errore nel resettare le partite:', err);
       return res.status(500).send('Errore del server');
     }
-    db.query('DELETE FROM partita', (err) => {
+    db.query('DELETE FROM squadra', (err) => {
       if (err) {
-        console.error('Errore nel resettare le partite:', err);
+        console.error('Errore nel resettare le squadre:', err);
         return res.status(500).send('Errore del server');
       }
       res.send('Database resettato con successo');
-});
-});
+    });
+  });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-console.log('Server in ascolto sulla porta ${PORT}');
+  console.log(`Server in ascolto sulla porta ${PORT}`);
 });
