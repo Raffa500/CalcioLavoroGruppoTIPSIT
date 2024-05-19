@@ -13,6 +13,8 @@ app.use(bodyParser.json());
 
 let clientIds = {}; // Oggetto per memorizzare gli identificatori unici dei client
 let nextClientId = 1; // Prossimo identificatore unico disponibile
+let client1 = null;
+let client2 = null;
 
 wss.on('connection', ws => {
   const clientId = nextClientId++; // Assegniamo un identificatore unico basato sul prossimo valore disponibile
@@ -21,17 +23,24 @@ wss.on('connection', ws => {
   // Memorizziamo l'identificatore del client nella mappa dei client
   clientIds[ws] = clientId;
 
+  // Assegna il client1 o il client2 in base all'ordine di connessione
+  if (!client1) {
+    client1 = ws;
+  } else if (!client2) {
+    client2 = ws;
+  }
+
   ws.on('message', message => {
     console.log(`Ricevuto dal client ${clientId}:`, message);
 
     const parsedMessage = JSON.parse(message);
 
-    if (ws === clientIds['client1']) {
+    if (ws === client1) {
       // Logica per il client1
       console.log('Messaggio ricevuto da client1:', message);
       // Esempio di risposta al client1
       // ws.send('Messaggio ricevuto dal client1');
-    } else if (ws === clientIds['client2']) {
+    } else if (ws === client2) {
       // Logica per il client2
       console.log('Messaggio ricevuto da client2:', message);
       // Esempio di risposta al client2
@@ -43,10 +52,15 @@ wss.on('connection', ws => {
     console.log(`Client ${clientId} disconnesso`);
     // Rimuoviamo l'identificatore del client dalla mappa dei client quando si disconnette
     delete clientIds[ws];
+
+    // Se un client si disconnette, reimpostiamo il client1 o il client2 a null
+    if (ws === client1) {
+      client1 = null;
+    } else if (ws === client2) {
+      client2 = null;
+    }
   });
 });
-
-
 
 // Endpoint per aggiungere una squadra
 app.post('/add-team', (req, res) => {
@@ -192,7 +206,6 @@ function broadcast(data) {
     }
   });
 }
-
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
