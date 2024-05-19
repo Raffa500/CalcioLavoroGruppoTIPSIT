@@ -93,8 +93,6 @@
       .then(response => response.text())
       .then(data => {
         alert(data);
-        document.getElementById('listaSquadre').innerHTML = '';
-        document.getElementById('risultati').innerHTML = '';
       })
       .catch(error => console.error('Errore:', error));
     }

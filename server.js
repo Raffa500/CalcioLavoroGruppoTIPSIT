@@ -112,10 +112,10 @@ app.post('/start-match', (req, res) => {
 
 // Endpoint per aggiornare il risultato della partita
 app.post('/end-match', (req, res) => {
-  const { partitaId, vincitore, squadraCasaId, squadraOspiteId } = req.body;
+  const { partitaId, vincitore, squadraCasaId, squadraOspiteId, punteggioCasa, punteggioOspite } = req.body;
   db.query(
-    'UPDATE partita SET vincitore = ? WHERE id = ?',
-    [vincitore, partitaId],
+    'UPDATE partita SET vincitore = ?, punteggio_casa = ?, punteggio_ospite = ? WHERE id = ?',
+    [vincitore, punteggioCasa, punteggioOspite, partitaId],
     (err) => {
       if (err) {
         console.error('Errore nell\'aggiornare il risultato della partita:', err);
@@ -125,19 +125,41 @@ app.post('/end-match', (req, res) => {
       const colonnaVittoria = vincitore === 'casa' ? 'vinte_casa' : 'vinte_ospite';
       const squadraVincenteId = vincitore === 'casa' ? squadraCasaId : squadraOspiteId;
       db.query(
-        `UPDATE squadra SET partite_giocate = partite_giocate + 1, ${colonnaVittoria} = ${colonnaVittoria} + 1 WHERE id = ?`,
+        `UPDATE squadra 
+         SET partite_giocate = partite_giocate + 1, 
+             ${colonnaVittoria} = ${colonnaVittoria} + 1 
+         WHERE id = ?`,
         [squadraVincenteId],
         (err) => {
           if (err) {
             console.error('Errore nell\'aggiornare le statistiche della squadra:', err);
             return res.status(500).send('Errore del server');
           }
+          // Dopo aver aggiornato le statistiche, ritorna successo
           res.send('Partita conclusa con successo');
+          // Ora aggiorna la tabella dei risultati
+          updateResultsTable();
         }
       );
     }
   );
 });
+
+
+// Funzione per aggiornare la tabella dei risultati
+function updateResultsTable() {
+  db.query('SELECT * FROM squadra', (err, results) => {
+    if (err) {
+      console.error('Errore nel recuperare i risultati:', err);
+      return;
+    }
+        // Invia i risultati aggiornati ai client connessi
+    broadcast(JSON.stringify({
+      type: 'resultsUpdate',
+      results: results
+    }));
+  });
+}
 
 // Endpoint per visualizzare i risultati
 app.get('/results', (req, res) => {
@@ -162,10 +184,13 @@ app.post('/reset', (req, res) => {
         console.error('Errore nel resettare le squadre:', err);
         return res.status(500).send('Errore del server');
       }
+      // Dopo aver resettato, invia un segnale per aggiornare i risultati
+      updateResultsTable();
       res.send('Database resettato con successo');
     });
   });
 });
+
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
